@@ -1,75 +1,95 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const CalculadoraApp());
+  runApp(CalculadoraApp());
 }
 
 class CalculadoraApp extends StatelessWidget {
-  const CalculadoraApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Calculadora Básica',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const CalculadoraHome(),
+      debugShowCheckedModeBanner: false,
+      home: CalculadoraHomePage(),
     );
   }
 }
 
-class CalculadoraHome extends StatefulWidget {
-  const CalculadoraHome({super.key});
-
+class CalculadoraHomePage extends StatefulWidget {
   @override
-  State<CalculadoraHome> createState() => _CalculadoraHomeState();
+  _CalculadoraHomePageState createState() => _CalculadoraHomePageState();
 }
 
-class _CalculadoraHomeState extends State<CalculadoraHome> {
-  final TextEditingController _num1Controller = TextEditingController();
-  final TextEditingController _num2Controller = TextEditingController();
-  String _resultado = "";
-  final List<String> _historial = [];
+class _CalculadoraHomePageState extends State<CalculadoraHomePage> {
+  String _display = "";
+  String _operation = "";
+  double? _firstOperand;
+  double? _secondOperand;
+  final List<String> _history = [];
 
-  void _calcular(String operacion) {
+  void _inputDigit(String digit) {
     setState(() {
-      double? num1 = double.tryParse(_num1Controller.text);
-      double? num2 = double.tryParse(_num2Controller.text);
+      _display += digit;
+    });
+  }
 
-      if (num1 == null || num2 == null) {
-        _resultado = "Error: Entrada inválida";
-        return;
-      }
+  void _clear() {
+    setState(() {
+      _display = "";
+      _operation = "";
+      _firstOperand = null;
+      _secondOperand = null;
+    });
+  }
 
-      switch (operacion) {
-        case '+':
-          _resultado = (num1 + num2).toStringAsFixed(2);
-          break;
-        case '-':
-          _resultado = (num1 - num2).toStringAsFixed(2);
-          break;
-        case '×':
-          _resultado = (num1 * num2).toStringAsFixed(2);
-          break;
-        case '÷':
-          _resultado = num2 != 0
-              ? (num1 / num2).toStringAsFixed(2)
-              : "Error: División por cero";
-          break;
-      }
-
-      if (!_resultado.startsWith("Error")) {
-        _historial.add("$num1 $operacion $num2 = $_resultado");
+  void _setOperation(String operation) {
+    setState(() {
+      if (_display.isNotEmpty) {
+        _firstOperand = double.tryParse(_display);
+        _display = "";
+        _operation = operation;
       }
     });
   }
 
-  void _limpiar() {
+  void _calculate() {
     setState(() {
-      _num1Controller.clear();
-      _num2Controller.clear();
-      _resultado = "";
+      if (_display.isNotEmpty && _firstOperand != null) {
+        _secondOperand = double.tryParse(_display);
+        if (_secondOperand != null) {
+          String result;
+          switch (_operation) {
+            case "+":
+              result = (_firstOperand! + _secondOperand!).toString();
+              break;
+            case "-":
+              result = (_firstOperand! - _secondOperand!).toString();
+              break;
+            case "*":
+              result = (_firstOperand! * _secondOperand!).toString();
+              break;
+            case "/":
+              result = _secondOperand != 0
+                  ? (_firstOperand! / _secondOperand!).toString()
+                  : "Error";
+              break;
+            default:
+              result = "Error";
+          }
+          _history.insert(0, "$_firstOperand $_operation $_secondOperand = $result");
+          _display = result;
+          _firstOperand = null;  // Limpia los operandos
+          _secondOperand = null;
+          _operation = "";  // Limpia la operación
+        }
+      }
+    });
+  }
+
+  void _clearHistory() {
+    setState(() {
+      _history.clear();
+      _display = "";
+      _operation = "";
     });
   }
 
@@ -77,74 +97,91 @@ class _CalculadoraHomeState extends State<CalculadoraHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Calculadora Básica"),
+        title: Text("Calculadora"),
+        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _num1Controller,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: "Número 1",
-                border: OutlineInputBorder(),
-              ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Container(
+            padding: EdgeInsets.all(16.0),
+            alignment: Alignment.centerRight,
+            child: Text(
+              _display,
+              style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _num2Controller,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: "Número 2",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _calcular('+'),
-                  child: const Text("+"),
-                ),
-                ElevatedButton(
-                  onPressed: () => _calcular('-'),
-                  child: const Text("-"),
-                ),
-                ElevatedButton(
-                  onPressed: () => _calcular('×'),
-                  child: const Text("×"),
-                ),
-                ElevatedButton(
-                  onPressed: () => _calcular('÷'),
-                  child: const Text("÷"),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "Resultado: $_resultado",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const Divider(height: 40),
-            Expanded(
+          ),
+          Divider(),
+          SizedBox(height: 10),
+          Column(
+            children: [
+              _buildButtonRow(["7", "8", "9", "/"]),
+              SizedBox(height: 5),
+              _buildButtonRow(["4", "5", "6", "*"]),
+              SizedBox(height: 5),
+              _buildButtonRow(["1", "2", "3", "-"]),
+              SizedBox(height: 5),
+              _buildButtonRow(["C", "0", "=", "+"]),
+            ],
+          ),
+          SizedBox(height: 20),
+          if (_history.isNotEmpty) ...[
+            Divider(),
+            SizedBox(
+              height: 200,
               child: ListView.builder(
-                itemCount: _historial.length,
+                itemCount: _history.length,
                 itemBuilder: (context, index) {
                   return ListTile(
-                    title: Text(_historial[index]),
+                    title: Text(_history[index]),
                   );
                 },
               ),
             ),
-            ElevatedButton(
-              onPressed: _limpiar,
-              child: const Text("Limpiar"),
-            ),
           ],
-        ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _clearHistory,
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(200, 50),
+            ),
+            child: Text(
+              "Borrar Historial",
+              style: TextStyle(fontSize: 18),
+            ),
+          ),
+          SizedBox(height: 20),
+        ],
       ),
+    );
+  }
+
+  Widget _buildButtonRow(List<String> buttons) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: buttons.map((btn) {
+        return ElevatedButton(
+          onPressed: () {
+            if (btn == "C") {
+              _clear();
+            } else if (btn == "=") {
+              _calculate();
+            } else if ("+-*/".contains(btn)) {
+              _setOperation(btn);
+            } else {
+              _inputDigit(btn);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            minimumSize: Size(80, 80),
+            shape: CircleBorder(),
+          ),
+                    child: Text(
+            btn,
+            style: TextStyle(fontSize: 24),
+          ),
+        );
+      }).toList(),
     );
   }
 }
